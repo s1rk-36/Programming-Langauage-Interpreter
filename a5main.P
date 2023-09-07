@@ -1,0 +1,66 @@
+% Declare dynamic to allow these predicates to be missing in input facts
+:- dynamic 'Var'/2, 'Int'/2, 'String'/2.
+:- dynamic 'Array'/2, 'Index'/3, 'BinOpExp'/4, 'UniOpExp'/3.
+:- dynamic 'Print'/2, 'Assign'/3, 'Block'/2, 'If'/3, 'While'/3.
+:- dynamic 'Def'/4, 'Call'/3, 'Elem'/3, 'Empty'/1.
+
+
+% Use automatic tabling to allow reuse of query results
+:- auto_table.
+
+
+% Define predicates for analyzing procedure names
+
+proc_defined(P) :- 'Def'(_, P, _, _),
+   write('Definition of procedure '), writeln(P), nl.
+
+proc_called(p) :- 'Call'(_, P, _),
+   write('Call of procedure '), writeln(P), nl.
+
+doubly_defined(P) :- 'Def'(ID, P, _, _), 'Def'(ID2, P, _, _), ID \= ID2,
+   write('Double definitions of procedure '), writeln(P), nl.
+
+call_undefined(P) :- 'Call'(_,P,_), \+ 'Def'(_,P,_,_),
+   write('Call of undefined procedure '), writeln(P), nl.
+
+
+% Define predicates for analyzing variable names
+
+var_assigned(V) :- 'Assign'(_, ID, _), 'Var'(VarID, V), ID = VarID,
+   write('Definition of variable '), writeln(V), nl.
+
+var_params(V) :- 'Def'(_, V, A, _),
+   write('Locals of procedure '), write(V), writeln(': '), nl,
+   print_list(A).
+print_list(A):- ('Elem'(A, B, C), 'Var'(B,V), 'Elem'(C, D, E), writeln(V), nl, print_list(C));
+('Elem'(A, B, C), 'Var'(B, V), not 'Elem'(C, _, _),writeln(V), nl).
+
+
+var_used(V) :- 'Index'(_, V, _),  write('Use of variable '), write(V), nl, nl.
+
+var_used(V) :- 'Array'(_, Elems), print_list_2(Elems).
+
+%var_used(V) :- 'UniOpExp'(_, _, Arg), 'Var'(Arg, V),  write('Use of variable '), write(V), nl, nl.
+var_used(V) :- 'Print'(_, Exp), 'Var'(Exp, V),  write('Use of variable '), write(V), nl.
+var_used(V) :- 'If'(_, Exp, Stmt), 'Var'(_, V),  write('Use of variable '), write(V), nl, nl.
+var_used(V) :- 'Assign'(_, _, Right), 'Var'(Right, V), write('Use of variable '), writeln(V).
+var_used(V) :- 'BinOpExp'(_, Left, _, Right), ('Var'(Left, V) ; 'Var'(Right, V)),  write('Use of variable '), write(V), nl.
+var_used(V) :- 'While'(_, Exp, Stmt), 'Var'(_, V) ;  write('Use of variable '), write(V), nl, nl.
+
+var_assigned_2(V) :- 'Assign'(_, ID, _), 'Var'(VarID, V), ID = VarID.
+
+var_params_2(V) :- 'Def'(_, V, A, _), print_list_2(A).
+print_list_2(A):- ('Elem'(A, B, C), 'Var'(B,V), 'Elem'(C, D, E), print_list(C), write('Use of variable '), writeln(V), print_list_2(C));
+('Elem'(A, B, C), 'Var'(B, V), not 'Elem'(C, _, _), write('Use of variable '), writeln(V)).
+
+
+% Run all the analyses
+
+a5run :- 
+   (proc_defined(_), fail; write('\n')),
+   (proc_called(_), fail; write('\n')),
+   (doubly_defined(_), fail; write('\n')),
+   (call_undefined(_), fail; write('\n')),
+   (var_assigned(_), fail; write('\n')),
+   (var_params(_), fail; write('\n')),
+   (var_used(_), fail; write('\n')).
